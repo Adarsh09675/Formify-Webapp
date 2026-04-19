@@ -71,6 +71,17 @@ npm run build
 ```
 *(Generates the payload served natively via Express statically at `http://localhost:5000/widget/widget.iife.js`)*
 
+### Testing the Widget Locally
+A `test.html` file is provided in the root directory for easy local testing.
+1. Start the **Backend** server as instructed above.
+2. Build the **Widget** code using `npm run build` in the `widget` folder.
+3. Start a simple local server in the root directory of the project. For example, using Python:
+   ```bash
+   python -m http.server 8080
+   ```
+4. Open your browser and navigate to `http://localhost:8080/test.html`.
+5. You can change the `data-form-id` attribute inside the `<script>` tag in `test.html` to match the ID of any form you created in the Dashboard to test it live!
+
 ## 🧩 7. Widget Integration Explanation
 Injecting the widget to a third-party website is straightforward:
 ```html
