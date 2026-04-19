@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { Download, Copy, Code, ArrowLeft } from 'lucide-react';
+import { Download, Copy, Code, ArrowLeft, Trash2 } from 'lucide-react';
 
 export default function FormDetails({ apiBase, token }) {
   const { id } = useParams();
@@ -37,20 +37,41 @@ export default function FormDetails({ apiBase, token }) {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const handleDelete = async () => {
+    if (!window.confirm('Are you sure you want to delete this form and all its responses? This cannot be undone.')) return;
+    try {
+      const res = await fetch(`${apiBase}/api/forms/${id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        navigate('/');
+      } else {
+        alert('Failed to delete the form.');
+      }
+    } catch(err) { console.error(err); }
+  };
+
   const handleExport = () => {
-    window.location.href = `${apiBase}/api/forms/${id}/export?token=${token}`; // For simplicity, though auth middleware wants Bearer.
-    // Better way: fetch and trigger DL
     fetch(`${apiBase}/api/forms/${id}/export`, {
       headers: { Authorization: `Bearer ${token}` }
     })
-    .then(res => res.blob())
+    .then(res => {
+      if (!res.ok) throw new Error('Export failed');
+      return res.blob();
+    })
     .then(blob => {
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
+      a.style.display = 'none';
       a.href = url;
       a.download = `form_${form.id}_export.csv`;
+      document.body.appendChild(a);
       a.click();
-    });
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    })
+    .catch(err => console.error('Export error:', err));
   };
 
   // Compute stats
@@ -84,9 +105,12 @@ export default function FormDetails({ apiBase, token }) {
       </div>
 
       <div className="panel" style={{marginBottom: '2rem'}}>
-        <div style={{display:'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom:'1.5rem'}}>
-          <h2 style={{margin:0, color: form.theme_color}}>{form.title} - Management</h2>
-          <button className="secondary" onClick={handleExport}><Download size={16} style={{marginRight:'0.5rem'}}/> Export CSV</button>
+        <div style={{display:'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom:'1.5rem', flexWrap:'wrap', gap:'1rem'}}>
+          <h2 style={{margin:0, color: form.theme_color, background:'var(--accent-gradient)', WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent'}}>{form.title} - Management</h2>
+          <div style={{display:'flex', gap:'1rem', flexWrap:'wrap'}}>
+            <button className="danger" onClick={handleDelete}><Trash2 size={16} style={{marginRight:'0.5rem'}}/> Delete Form</button>
+            <button className="secondary" onClick={handleExport}><Download size={16} style={{marginRight:'0.5rem'}}/> Export CSV</button>
+          </div>
         </div>
         
         <div style={{background: 'var(--bg-color)', padding: '1.5rem', borderRadius: '0.5rem', border: '1px solid var(--border)', display:'flex', alignItems:'center', gap:'1rem'}}>

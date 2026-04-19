@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { PlusCircle, FileText, Activity } from 'lucide-react';
+import { PlusCircle, FileText, Trash2 } from 'lucide-react';
 
 export default function Dashboard({ apiBase, token }) {
   const [forms, setForms] = useState([]);
@@ -18,6 +18,22 @@ export default function Dashboard({ apiBase, token }) {
     })
     .catch(console.error);
   }, [apiBase, token]);
+
+  const handleDelete = async (e, id) => {
+    e.stopPropagation();
+    if (!window.confirm('Are you sure you want to delete this form and all its responses? This cannot be undone.')) return;
+    try {
+      const res = await fetch(`${apiBase}/api/forms/${id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        setForms(forms.filter(f => f.id !== id));
+      } else {
+        alert('Failed to delete the form.');
+      }
+    } catch(err) { console.error(err); }
+  };
 
   if (loading) return <div className="flex-center"><span className="loader" style={{borderColor:'var(--accent)', borderTopColor:'transparent'}}></span></div>;
 
@@ -37,8 +53,16 @@ export default function Dashboard({ apiBase, token }) {
       ) : (
         <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.5rem'}}>
           {forms.map(f => (
-            <div key={f.id} className="panel" style={{padding: '1.5rem', cursor: 'pointer', transition: 'transform 0.2s'}} onClick={() => navigate(`/form/${f.id}`)}>
-              <h3 style={{marginTop:0, display:'flex', alignItems:'center', gap:'0.5rem'}}><FileText size={20} color={f.theme_color}/> {f.title}</h3>
+            <div key={f.id} className="panel panel-hoverable" style={{padding: '1.5rem', cursor: 'pointer', position: 'relative'}} onClick={() => navigate(`/form/${f.id}`)}>
+              <button 
+                onClick={(e) => handleDelete(e, f.id)} 
+                className="danger remove-btn" 
+                style={{position:'absolute', top:'1rem', right:'1rem', padding:'0.5rem', borderRadius:'0.5rem', display:'flex', alignItems:'center', justifyContent:'center'}}
+                title="Delete Form"
+              >
+                <Trash2 size={16} />
+              </button>
+              <h3 style={{marginTop:0, marginRight:'2rem', display:'flex', alignItems:'center', gap:'0.5rem'}}><FileText size={20} color={f.theme_color}/> {f.title}</h3>
               <div style={{color: 'var(--text-secondary)', fontSize: '0.875rem', marginBottom: '1rem'}}>
                 Created: {new Date(f.created_at).toLocaleDateString()}
               </div>

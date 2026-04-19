@@ -7,6 +7,7 @@ const db = new sqlite3.Database(dbPath, (err) => {
     console.error('Error opening db', err.message);
   } else {
     console.log('Connected to SQLite db');
+    db.run('PRAGMA foreign_keys = ON');
   }
 });
 
@@ -61,6 +62,11 @@ const initDB = async () => {
         FOREIGN KEY (user_id) REFERENCES users (id)
       )
     `);
+
+    // Migrations for new customizations
+    db.run("ALTER TABLE forms ADD COLUMN font_family TEXT DEFAULT 'Outfit'", (err) => {});
+    db.run("ALTER TABLE forms ADD COLUMN font_size TEXT DEFAULT 'medium'", (err) => {});
+    db.run("ALTER TABLE forms ADD COLUMN submit_label TEXT DEFAULT 'Submit'", (err) => {});
 
     db.run(`
       CREATE TABLE IF NOT EXISTS form_fields (

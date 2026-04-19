@@ -194,6 +194,15 @@ class FormifyWidget extends HTMLElement {
     // Convert RGB to ring color roughly
     styleText = styleText.replace(/--ring:.*;/g, "--ring: " + form.theme_color + "80;");
 
+    // Apply font family and size
+    const fontStr = form.font_family === 'system-ui' ? 'system-ui, -apple-system, sans-serif' : `'${form.font_family || 'Inter'}', sans-serif`;
+    const sizeMap = { small: '0.875rem', medium: '1rem', large: '1.2rem' };
+    const rootSize = sizeMap[form.font_size || 'medium'] || '1rem';
+    
+    styleText += `\n:host { font-family: ${fontStr}; font-size: ${rootSize}; }\n`;
+    styleText += `h2 { font-size: 1.25em; }`; // Make h2 relative to root
+    styleText += `label, input, select, textarea, button { font-family: inherit; font-size: inherit; }`;
+
     const styleEl = document.createElement('style');
     styleEl.textContent = styleText;
 
@@ -274,7 +283,7 @@ class FormifyWidget extends HTMLElement {
 
     const submitBtn = document.createElement('button');
     submitBtn.type = 'submit';
-    submitBtn.textContent = 'Submit';
+    submitBtn.textContent = form.submit_label || 'Submit';
     formEl.appendChild(submitBtn);
 
     const msgBox = document.createElement('div');

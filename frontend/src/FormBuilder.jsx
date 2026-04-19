@@ -8,6 +8,9 @@ export default function FormBuilder({ apiBase, token }) {
   const [themeColor, setThemeColor] = useState('#4F46E5');
   const [position, setPosition] = useState('floating-right');
   const [webhookUrl, setWebhookUrl] = useState('');
+  const [fontFamily, setFontFamily] = useState('Outfit');
+  const [fontSize, setFontSize] = useState('medium');
+  const [submitLabel, setSubmitLabel] = useState('Submit');
 
   const [fields, setFields] = useState([
     { type: 'rating', label: 'How would you rate your experience?', is_required: true },
@@ -22,28 +25,30 @@ export default function FormBuilder({ apiBase, token }) {
       <div className="panel" style={{ position: 'sticky', top: '2rem' }}>
         <h3 style={{ marginTop: 0, marginBottom: '1.5rem' }}>Live Preview</h3>
         <div style={{ border: '1px solid var(--border)', borderRadius: '1rem', padding: '1.5rem', background: 'var(--bg-color)' }}>
-          <div style={{ background: 'var(--panel-bg)', padding: '1.5rem', borderRadius: '0.75rem', borderStyles: 'solid', borderWidth: '1px', borderColor: 'var(--border)' }}>
-            <h4 style={{ marginTop: 0, color: themeColor }}>{title}</h4>
-            {fields.map((f, i) => (
-              <div key={i} style={{ marginBottom: '1rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 500 }}>
-                  {f.label} {f.is_required && <span style={{ color: 'red' }}>*</span>}
-                </label>
-                {f.type === 'text' && <input type="text" disabled placeholder="Text input" style={{ width: '100%', padding: '0.5rem' }} />}
-                {f.type === 'dropdown' && <select disabled style={{ width: '100%', padding: '0.5rem' }}><option>Dropdown...</option></select>}
-                {(f.type === 'rating' || f.type === 'nps') && (
-                  <div style={{ display: 'flex', gap: '0.5rem' }}>
-                    {[1, 2, 3, 4, 5].map(x => <div key={x} style={{ width: '40px', height: '40px', border: '1px solid var(--border)', borderRadius: '0.375rem', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.875rem' }}>{x}</div>)}
-                  </div>
-                )}
-                {f.type === 'checkbox' && (
-                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                    <input type="checkbox" disabled /> <span style={{ fontSize: '0.875rem' }}>{f.label}</span>
-                  </div>
-                )}
-              </div>
-            ))}
-            <button style={{ width: '100%', background: themeColor }}>Submit</button>
+          <div style={{ background: 'var(--panel-bg)', padding: '1.5rem', borderRadius: '0.75rem', borderStyles: 'solid', borderWidth: '1px', borderColor: 'var(--border)', fontFamily: fontFamily }}>
+            <h4 style={{ marginTop: 0, color: themeColor, fontSize: fontSize === 'large' ? '1.5rem' : fontSize === 'small' ? '1rem' : '1.25rem' }}>{title}</h4>
+            <div style={{fontSize: fontSize === 'large' ? '1rem' : fontSize === 'small' ? '0.75rem' : '0.875rem' }}>
+              {fields.map((f, i) => (
+                <div key={i} style={{ marginBottom: '1rem' }}>
+                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>
+                    {f.label} {f.is_required && <span style={{ color: 'red' }}>*</span>}
+                  </label>
+                  {f.type === 'text' && <input type="text" disabled placeholder="Text input" style={{ width: '100%', padding: '0.5rem' }} />}
+                  {f.type === 'dropdown' && <select disabled style={{ width: '100%', padding: '0.5rem' }}><option>Dropdown...</option></select>}
+                  {(f.type === 'rating' || f.type === 'nps') && (
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                      {[1, 2, 3, 4, 5].map(x => <div key={x} style={{ width: '40px', height: '40px', border: '1px solid var(--border)', borderRadius: '0.375rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{x}</div>)}
+                    </div>
+                  )}
+                  {f.type === 'checkbox' && (
+                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                      <input type="checkbox" disabled /> <span>{f.label}</span>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+            <button style={{ width: '100%', background: themeColor, fontSize: fontSize === 'large' ? '1.1rem' : '0.9rem' }}>{submitLabel}</button>
           </div>
           <div style={{ textAlign: 'center', marginTop: '1rem', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
             Widget Mode: <strong>{position}</strong>
@@ -87,6 +92,9 @@ export default function FormBuilder({ apiBase, token }) {
           theme_color: themeColor,
           widget_position: position,
           webhook_url: webhookUrl,
+          font_family: fontFamily,
+          font_size: fontSize,
+          submit_label: submitLabel,
           fields: formattedFields
         })
       });
@@ -108,7 +116,7 @@ export default function FormBuilder({ apiBase, token }) {
       <div>
         <div className="panel" style={{ marginBottom: '2rem' }}>
           <h2 style={{ marginTop: 0 }}>General Settings</h2>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
             <div className="form-group">
               <label>Form Title</label>
               <input value={title} onChange={e => setTitle(e.target.value)} />
@@ -126,6 +134,27 @@ export default function FormBuilder({ apiBase, token }) {
               </select>
             </div>
             <div className="form-group">
+              <label>Font Type</label>
+              <select value={fontFamily} onChange={e => setFontFamily(e.target.value)}>
+                <option value="Outfit">Outfit</option>
+                <option value="Inter">Inter</option>
+                <option value="Roboto">Roboto</option>
+                <option value="system-ui">System Default</option>
+              </select>
+            </div>
+            <div className="form-group">
+              <label>Font Size</label>
+              <select value={fontSize} onChange={e => setFontSize(e.target.value)}>
+                <option value="small">Small</option>
+                <option value="medium">Medium</option>
+                <option value="large">Large</option>
+              </select>
+            </div>
+            <div className="form-group">
+              <label>Submit Button Label</label>
+              <input value={submitLabel} onChange={e => setSubmitLabel(e.target.value)} />
+            </div>
+            <div className="form-group" style={{gridColumn: '1 / -1'}}>
               <label>Webhook URL (Optional)</label>
               <input type="url" placeholder="https://..." value={webhookUrl} onChange={e => setWebhookUrl(e.target.value)} />
             </div>

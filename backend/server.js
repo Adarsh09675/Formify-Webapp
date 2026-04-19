@@ -91,6 +91,9 @@ const formSettingsSchema = z.object({
   theme_color: z.string(),
   widget_position: z.string(),
   webhook_url: z.string().url().optional().or(z.literal('')),
+  font_family: z.string().optional().default('Outfit'),
+  font_size: z.string().optional().default('medium'),
+  submit_label: z.string().optional().default('Submit'),
   fields: z.array(fieldSchema).min(1)
 });
 
@@ -116,8 +119,8 @@ app.post('/api/forms', authMiddleware, async (req, res) => {
     
     // Insert Form
     const result = await db.runAsync(
-      'INSERT INTO forms (user_id, title, theme_color, widget_position, webhook_url) VALUES (?, ?, ?, ?, ?)',
-      [req.user.id, data.title, data.theme_color, data.widget_position, data.webhook_url || null]
+      'INSERT INTO forms (user_id, title, theme_color, widget_position, webhook_url, font_family, font_size, submit_label) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      [req.user.id, data.title, data.theme_color, data.widget_position, data.webhook_url || null, data.font_family, data.font_size, data.submit_label]
     );
     
     const formId = result.lastID;
@@ -205,6 +208,20 @@ app.get('/api/forms/:id/export', authMiddleware, async (req, res) => {
   }
 });
 
+// Delete Form
+app.delete('/api/forms/:id', authMiddleware, async (req, res) => {
+  try {
+    const form = await db.getAsync('SELECT * FROM forms WHERE id = ? AND user_id = ?', [req.params.id, req.user.id]);
+    if (!form) return res.status(404).json({ error: 'Not found or forbidden' });
+
+    // SQLite foreign keys are ON, so deleting the form cascaded deletes fields & submissions
+    await db.runAsync('DELETE FROM forms WHERE id = ?', [form.id]);
+    res.json({ success: true, message: 'Form deleted successfully' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ----------------------------------------
 // Routes: Public Endpoints (For Widget)
 // ----------------------------------------
@@ -212,7 +229,7 @@ app.get('/api/forms/:id/export', authMiddleware, async (req, res) => {
 // Fetch Form Config
 app.get('/api/widget/:id/config', async (req, res) => {
   try {
-    const form = await db.getAsync('SELECT id, title, theme_color, widget_position FROM forms WHERE id = ?', [req.params.id]);
+    const form = await db.getAsync('SELECT id, title, theme_color, widget_position, font_family, font_size, submit_label FROM forms WHERE id = ?', [req.params.id]);
     if (!form) return res.status(404).json({ error: 'Form not found' });
     
     // Convert arrays back
