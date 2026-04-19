@@ -194,6 +194,9 @@ Injecting the widget to a third-party website is straightforward:
 ### 7. Submission Detail Rows
 ![Detailed Responses](image-6.png)
 
+### 8. Embedded Widget on `test.html`
+![Embedded Widget Test Page](image-7.png)
+
 ---
 
 ## 🛡️ 10. Error Handling, Validation & Security
