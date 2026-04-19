@@ -21,12 +21,20 @@ const styles = `
     border: 1px solid var(--border);
   }
 
-  .floating {
+  .floating-right {
     position: fixed;
     bottom: 20px;
     right: 20px;
     z-index: 999999;
   }
+
+  .floating-left {
+    position: fixed;
+    bottom: 20px;
+    left: 20px;
+    z-index: 999999;
+  }
+
 
   .inline {
     margin: 20px 0;
@@ -154,12 +162,12 @@ class FormifyWidget extends HTMLElement {
   constructor() {
     super();
     this.attachShadow({ mode: 'open' });
-    this.formId = this.getAttribute('form-id');
-    this.apiBase = this.getAttribute('api-base') || 'http://localhost:5000';
     this.config = null;
   }
 
   async connectedCallback() {
+    this.formId = this.getAttribute('form-id');
+    this.apiBase = this.getAttribute('api-base') || 'http://localhost:5000';
     this.shadowRoot.innerHTML = '<div style="padding:1rem;font-family:sans-serif;">Loading widget...</div>';
     await this.fetchConfig();
     this.render();
@@ -179,19 +187,20 @@ class FormifyWidget extends HTMLElement {
     if (!this.config) return;
 
     const { form, fields } = this.config;
-    
+
     // Set theme base color
     let styleText = styles.replace(/--primary:.*;/g, "--primary: " + form.theme_color + ";");
-    
+
     // Convert RGB to ring color roughly
     styleText = styleText.replace(/--ring:.*;/g, "--ring: " + form.theme_color + "80;");
 
     const styleEl = document.createElement('style');
     styleEl.textContent = styleText;
-    
+
     const wrapper = document.createElement('div');
-    wrapper.className = "form-container " + form.widget_position;
-    
+    const posClass = form.widget_position === 'floating' ? 'floating-right' : form.widget_position;
+    wrapper.className = "form-container " + posClass;
+
     const title = document.createElement('h2');
     title.textContent = form.title;
     wrapper.appendChild(title);
@@ -202,47 +211,47 @@ class FormifyWidget extends HTMLElement {
     fields.forEach(field => {
       const fg = document.createElement('div');
       fg.className = "field-group " + (field.type === 'checkbox' ? 'checkbox-group' : '');
-      
+
       const label = document.createElement('label');
       label.innerHTML = field.label + (field.is_required ? '<span class="required">*</span>' : '');
-      
+
       // Swap order for checkbox
-      if(field.type !== 'checkbox') fg.appendChild(label);
+      if (field.type !== 'checkbox') fg.appendChild(label);
 
       let input;
       if (field.type === 'text') {
         input = document.createElement(field.max_length > 100 ? 'textarea' : 'input');
-        if(input.tagName === 'INPUT') input.type = 'text';
+        if (input.tagName === 'INPUT') input.type = 'text';
         input.name = field.label;
-        if(field.is_required) input.required = true;
-        if(field.min_length) input.minLength = field.min_length;
-        if(field.max_length) input.maxLength = field.max_length;
+        if (field.is_required) input.required = true;
+        if (field.min_length) input.minLength = field.min_length;
+        if (field.max_length) input.maxLength = field.max_length;
         fg.appendChild(input);
       } else if (field.type === 'dropdown') {
         input = document.createElement('select');
         input.name = field.label;
-        if(field.is_required) input.required = true;
-        input.innerHTML = '<option value="">Select an option...</option>' + 
+        if (field.is_required) input.required = true;
+        input.innerHTML = '<option value="">Select an option...</option>' +
           field.options.map(opt => '<option value="' + opt + '">' + opt + '</option>').join('');
         fg.appendChild(input);
       } else if (field.type === 'checkbox') {
         input = document.createElement('input');
         input.type = 'checkbox';
         input.name = field.label;
-        if(field.is_required) input.required = true;
+        if (field.is_required) input.required = true;
         fg.appendChild(input);
         fg.appendChild(label);
       } else if (field.type === 'rating' || field.type === 'nps') {
         const valInput = document.createElement('input');
         valInput.type = 'hidden';
         valInput.name = field.label;
-        if(field.is_required) valInput.required = true;
-        
+        if (field.is_required) valInput.required = true;
+
         const max = field.type === 'rating' ? 5 : 10;
         const g = document.createElement('div');
         g.className = 'rating-group';
         let btns = [];
-        
+
         for (let i = 1; i <= max; i++) {
           const b = document.createElement('button');
           b.type = 'button';
@@ -283,7 +292,7 @@ class FormifyWidget extends HTMLElement {
     const formEl = e.target;
     const formData = new FormData(formEl);
     const data = Object.fromEntries(formData.entries());
-    
+
     // Checkbox special handle
     formEl.querySelectorAll('input[type="checkbox"]').forEach(cb => {
       data[cb.name] = cb.checked;
@@ -291,7 +300,7 @@ class FormifyWidget extends HTMLElement {
 
     const btn = formEl.querySelector('button[type="submit"]');
     const msgBox = formEl.querySelector('.msg-box');
-    
+
     btn.disabled = true;
     btn.textContent = 'Submitting...';
     msgBox.innerHTML = '';
@@ -304,7 +313,7 @@ class FormifyWidget extends HTMLElement {
         },
         body: JSON.stringify(data)
       });
-      
+
       const body = await res.json();
 
       if (!res.ok) {
@@ -314,7 +323,7 @@ class FormifyWidget extends HTMLElement {
       msgBox.innerHTML = '<div class="success-msg">Thank you! Your feedback has been submitted.</div>';
       formEl.reset();
       formEl.querySelectorAll('.rating-btn').forEach(b => b.classList.remove('active'));
-      
+
       // Keep button disabled to avoid spam duplicates visually
       btn.textContent = 'Submit';
     } catch (err) {
@@ -328,21 +337,21 @@ class FormifyWidget extends HTMLElement {
 customElements.define('formify-widget', FormifyWidget);
 
 // Injection script logic
-(function() {
+(function () {
   const scripts = document.getElementsByTagName('script');
   const currentScript = scripts[scripts.length - 1]; // or locate via ID if needed
-  
+
   // Actually, searching document for a specific script tag is sometimes flawed. 
   // We can just query `script[data-form-id]`
   const scriptTag = document.querySelector('script[data-form-id]');
-  if(scriptTag) {
+  if (scriptTag) {
     const formId = scriptTag.getAttribute('data-form-id');
     const apiBase = scriptTag.getAttribute('data-api-base') || 'http://localhost:5000';
-    
+
     const w = document.createElement('formify-widget');
     w.setAttribute('form-id', formId);
     w.setAttribute('api-base', apiBase);
-    
+
     // Insert adjacent to script
     scriptTag.parentNode.insertBefore(w, scriptTag.nextSibling);
   }
