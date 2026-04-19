@@ -13,6 +13,19 @@ function Login({ setToken }) {
   const [err, setErr] = useState('');
   const [loading, setLoading] = useState(false);
 
+  const toggleMode = () => {
+    const nextRegister = !isRegister;
+    setIsRegister(nextRegister);
+    setErr('');
+    if (nextRegister) {
+      setUsername('');
+      setPassword('');
+    } else {
+      setUsername('admin');
+      setPassword('password123');
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -59,7 +72,7 @@ function Login({ setToken }) {
           {isRegister ? 'Already have an account? ' : "Don't have an account? "}
           <span 
             style={{ color: 'var(--accent)', cursor: 'pointer', fontWeight: 600 }}
-            onClick={() => { setIsRegister(!isRegister); setErr(''); }}
+            onClick={toggleMode}
           >
             {isRegister ? 'Log in' : 'Register here'}
           </span>

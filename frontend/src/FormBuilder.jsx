@@ -7,7 +7,6 @@ export default function FormBuilder({ apiBase, token }) {
   const [title, setTitle] = useState('My Feedback Form');
   const [themeColor, setThemeColor] = useState('#4F46E5');
   const [position, setPosition] = useState('floating-right');
-  const [webhookUrl, setWebhookUrl] = useState('');
   const [fontFamily, setFontFamily] = useState('Outfit');
   const [fontSize, setFontSize] = useState('medium');
   const [submitLabel, setSubmitLabel] = useState('Submit');
@@ -36,13 +35,27 @@ export default function FormBuilder({ apiBase, token }) {
                   {f.type === 'text' && <input type="text" disabled placeholder="Text input" style={{ width: '100%', padding: '0.5rem' }} />}
                   {f.type === 'dropdown' && <select disabled style={{ width: '100%', padding: '0.5rem' }}><option>Dropdown...</option></select>}
                   {(f.type === 'rating' || f.type === 'nps') && (
-                    <div style={{ display: 'flex', gap: '0.5rem' }}>
-                      {[1, 2, 3, 4, 5].map(x => <div key={x} style={{ width: '40px', height: '40px', border: '1px solid var(--border)', borderRadius: '0.375rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{x}</div>)}
+                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                      {(f.type === 'nps' ? Array.from({ length: 11 }, (_, idx) => idx) : [1, 2, 3, 4, 5]).map(x => (
+                        <div key={x} style={{ width: '40px', height: '40px', border: '1px solid var(--border)', borderRadius: '0.375rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{x}</div>
+                      ))}
                     </div>
                   )}
                   {f.type === 'checkbox' && (
-                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                      <input type="checkbox" disabled /> <span>{f.label}</span>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                      {Array.isArray(f.options) && f.options.length > 0 ? (
+                        f.options.map((opt, idx) => (
+                          <label key={idx} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                            <span>{opt}</span>
+                            <input type="checkbox" disabled />
+                          </label>
+                        ))
+                      ) : (
+                        <label style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                          <span>{f.label}</span>
+                          <input type="checkbox" disabled />
+                        </label>
+                      )}
                     </div>
                   )}
                 </div>
@@ -59,7 +72,13 @@ export default function FormBuilder({ apiBase, token }) {
   };
 
   const addField = (type) => {
-    setFields([...fields, { type, label: 'New Field', is_required: false }]);
+    const defaultField = {
+      type,
+      label: type === 'checkbox' ? 'New Checkbox Group' : type === 'dropdown' ? 'New Dropdown' : 'New Field',
+      is_required: false,
+      options: type === 'checkbox' || type === 'dropdown' ? ['Option 1', 'Option 2'] : undefined
+    };
+    setFields([...fields, defaultField]);
   };
 
   const updateField = (index, key, val) => {
@@ -76,7 +95,7 @@ export default function FormBuilder({ apiBase, token }) {
     setSaving(true);
     try {
       const formattedFields = fields.map(f => {
-        if (f.type === 'dropdown' && Array.isArray(f.options)) {
+        if ((f.type === 'dropdown' || f.type === 'checkbox') && Array.isArray(f.options)) {
           return { ...f, options: f.options.map(s => s.trim()).filter(Boolean) };
         }
         return f;
@@ -91,7 +110,6 @@ export default function FormBuilder({ apiBase, token }) {
           title,
           theme_color: themeColor,
           widget_position: position,
-          webhook_url: webhookUrl,
           font_family: fontFamily,
           font_size: fontSize,
           submit_label: submitLabel,
@@ -154,10 +172,6 @@ export default function FormBuilder({ apiBase, token }) {
               <label>Submit Button Label</label>
               <input value={submitLabel} onChange={e => setSubmitLabel(e.target.value)} />
             </div>
-            <div className="form-group" style={{gridColumn: '1 / -1'}}>
-              <label>Webhook URL (Optional)</label>
-              <input type="url" placeholder="https://..." value={webhookUrl} onChange={e => setWebhookUrl(e.target.value)} />
-            </div>
           </div>
         </div>
 
@@ -203,7 +217,7 @@ export default function FormBuilder({ apiBase, token }) {
                   </>
                 )}
 
-                {f.type === 'dropdown' && (
+                {(f.type === 'dropdown' || f.type === 'checkbox') && (
                   <div style={{ flex: 1 }}>
                     <label style={{ margin: 0 }}>Options (comma separated):</label>
                     <input style={{ padding: '0.25rem' }} value={(f.options || []).join(',')} onChange={e => updateField(i, 'options', e.target.value.split(','))} />
@@ -216,6 +230,7 @@ export default function FormBuilder({ apiBase, token }) {
           <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '1.5rem' }}>
             <button className="secondary" type="button" onClick={() => addField('text')}>+ Text</button>
             <button className="secondary" type="button" onClick={() => addField('rating')}>+ Rating</button>
+            <button className="secondary" type="button" onClick={() => addField('nps')}>+ NPS</button>
             <button className="secondary" type="button" onClick={() => addField('dropdown')}>+ Dropdown</button>
             <button className="secondary" type="button" onClick={() => addField('checkbox')}>+ Checkbox</button>
           </div>

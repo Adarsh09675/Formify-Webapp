@@ -101,12 +101,23 @@ const styles = `
   }
 
   .checkbox-group {
-    flex-direction: row;
-    align-items: center;
+    display: flex;
+    flex-direction: column;
     gap: 0.5rem;
   }
 
   .checkbox-group input {
+    margin: 0;
+  }
+
+  .checkbox-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+  }
+
+  .checkbox-item input {
     margin: 0;
   }
 
@@ -244,12 +255,30 @@ class FormifyWidget extends HTMLElement {
           field.options.map(opt => '<option value="' + opt + '">' + opt + '</option>').join('');
         fg.appendChild(input);
       } else if (field.type === 'checkbox') {
-        input = document.createElement('input');
-        input.type = 'checkbox';
-        input.name = field.label;
-        if (field.is_required) input.required = true;
-        fg.appendChild(input);
         fg.appendChild(label);
+        if (Array.isArray(field.options) && field.options.length > 0) {
+          field.options.forEach(opt => {
+            const item = document.createElement('label');
+            item.className = 'checkbox-item';
+            const cb = document.createElement('input');
+            cb.type = 'checkbox';
+            cb.name = field.label;
+            cb.value = opt;
+            item.appendChild(document.createTextNode(opt));
+            item.appendChild(cb);
+            fg.appendChild(item);
+          });
+        } else {
+          const item = document.createElement('label');
+          item.className = 'checkbox-item';
+          input = document.createElement('input');
+          input.type = 'checkbox';
+          input.name = field.label;
+          if (field.is_required) input.required = true;
+          item.appendChild(document.createTextNode(field.label));
+          item.appendChild(input);
+          fg.appendChild(item);
+        }
       } else if (field.type === 'rating' || field.type === 'nps') {
         const valInput = document.createElement('input');
         valInput.type = 'hidden';
@@ -300,11 +329,31 @@ class FormifyWidget extends HTMLElement {
     e.preventDefault();
     const formEl = e.target;
     const formData = new FormData(formEl);
-    const data = Object.fromEntries(formData.entries());
+    const data = {};
+    formData.forEach((value, key) => {
+      if (data[key] === undefined) {
+        data[key] = value;
+      } else if (Array.isArray(data[key])) {
+        data[key].push(value);
+      } else {
+        data[key] = [data[key], value];
+      }
+    });
 
-    // Checkbox special handle
-    formEl.querySelectorAll('input[type="checkbox"]').forEach(cb => {
-      data[cb.name] = cb.checked;
+    this.config.fields.forEach(field => {
+      if (field.type === 'checkbox') {
+        if (Array.isArray(field.options) && field.options.length > 0) {
+          if (data[field.label] === undefined) {
+            data[field.label] = [];
+          } else if (!Array.isArray(data[field.label])) {
+            data[field.label] = [data[field.label]];
+          }
+        } else {
+          if (data[field.label] === undefined) {
+            data[field.label] = false;
+          }
+        }
+      }
     });
 
     const btn = formEl.querySelector('button[type="submit"]');
