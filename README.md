@@ -4,11 +4,13 @@ A full-stack platform where users can create custom feedback forms through a Rea
 
 ### Key Features
 - 🎨 **Drag-and-drop Form Builder**: Create forms with multiple field types (text, rating, NPS, etc.)
+- 🔄 **Full CRUD Lifecycle**: Create, Read, Update, and Delete forms with instant synchronization
+- ⚡ **N+1 Performance Optimization**: Optimized JOIN queries for instant dashboard loading even with hundreds of forms
 - 🔗 **One-Line Integration**: Embed forms on any website with a single `<script>` tag
 - 🎯 **CSS Isolation**: Widget uses Shadow DOM to prevent style conflicts with host websites
 - 📊 **Real-time Analytics**: Dashboard with submissions data table and visual charts
 - 🔐 **JWT Authentication**: Secure user accounts for dashboard access
-- 📱 **Responsive Design**: Works across all devices and browsers
+- 📱 **Premium Responsive UI**: Glassmorphism-inspired interface that works flawlessly on all devices
 
 ---
 
@@ -379,6 +381,8 @@ For issues, questions, or suggestions, please open a GitHub issue or contact the
    *Why/Problem Solved:* Dashboards are great for overviews, but real analysis requires deep manipulation. I added a server-rendered logical payload dump that downloads the submissions properly formatted into a CSV file based on the dynamic column keys. 
 4. **IP-based Rate Limiting & Spam Prevention**
    *Why/Problem Solved:* Since the widget API doesn't require auth (it resides publicly on an embed), it's highly susceptible to botting. I implemented an in-memory Rate Limiter on the backend that locks submissions for a form per IP per minute. This stops duplicate clicks and mitigates malicious payload blasts.
+5. **N+1 Performance & JOIN Optimization**
+   *Why/Problem Solved:* The dashboard originally fetched form statistics via separate requests for each form, causing massive lag as the user created more forms. I replaced this with an optimized SQL `LEFT JOIN` and `GROUP BY` architecture, reducing the loading time from seconds to milliseconds.
 
 ## 🌩️ 10. Bonus Question Addressal
 

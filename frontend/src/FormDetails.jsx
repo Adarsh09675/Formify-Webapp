@@ -108,6 +108,7 @@ export default function FormDetails({ apiBase, token }) {
         <div style={{display:'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom:'1.5rem', flexWrap:'wrap', gap:'1rem'}}>
           <h2 style={{margin:0, color: form.theme_color, background:'var(--accent-gradient)', WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent'}}>{form.title} - Management</h2>
           <div style={{display:'flex', gap:'1rem', flexWrap:'wrap'}}>
+            <button className="secondary" onClick={() => navigate(`/edit/${id}`)}><Code size={16} style={{marginRight:'0.5rem'}}/> Edit Form</button>
             <button className="danger" onClick={handleDelete}><Trash2 size={16} style={{marginRight:'0.5rem'}}/> Delete Form</button>
             <button className="secondary" onClick={handleExport}><Download size={16} style={{marginRight:'0.5rem'}}/> Export CSV</button>
           </div>

@@ -1,9 +1,12 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Link2, Save } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import { Link2, Save, ArrowLeft } from 'lucide-react';
 
 export default function FormBuilder({ apiBase, token }) {
   const navigate = useNavigate();
+  const { id } = useParams();
+  const isEditing = Boolean(id);
+
   const [title, setTitle] = useState('My Feedback Form');
   const [themeColor, setThemeColor] = useState('#4F46E5');
   const [position, setPosition] = useState('floating-right');
@@ -16,7 +19,34 @@ export default function FormBuilder({ apiBase, token }) {
     { type: 'text', label: 'Any additional comments?', is_required: false, max_length: 500 }
   ]);
 
+  const [loading, setLoading] = useState(isEditing);
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (isEditing) {
+      fetch(`${apiBase}/api/forms/${id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.form) {
+          setTitle(data.form.title);
+          setThemeColor(data.form.theme_color);
+          setPosition(data.form.widget_position);
+          setFontFamily(data.form.font_family);
+          setFontSize(data.form.font_size);
+          setSubmitLabel(data.form.submit_label);
+          setFields(data.fields.map(f => ({
+            ...f,
+            is_required: f.is_required === 1,
+            options: f.options ? JSON.parse(f.options) : undefined
+          })));
+        }
+      })
+      .catch(err => console.error("Error loading form:", err))
+      .finally(() => setLoading(false));
+    }
+  }, [id, isEditing, apiBase, token]);
 
   // A very basic preview UI, not full isolation, just visually similar
   const Preview = () => {
@@ -82,9 +112,7 @@ export default function FormBuilder({ apiBase, token }) {
   };
 
   const updateField = (index, key, val) => {
-    const fn = [...fields];
-    fn[index][key] = val;
-    setFields(fn);
+    setFields(prev => prev.map((f, i) => i === index ? { ...f, [key]: val } : f));
   };
 
   const removeField = (index) => {
@@ -95,13 +123,23 @@ export default function FormBuilder({ apiBase, token }) {
     setSaving(true);
     try {
       const formattedFields = fields.map(f => {
-        if ((f.type === 'dropdown' || f.type === 'checkbox') && Array.isArray(f.options)) {
-          return { ...f, options: f.options.map(s => s.trim()).filter(Boolean) };
-        }
-        return f;
+        const cleanField = {
+          type: f.type,
+          label: f.label,
+          is_required: Boolean(f.is_required),
+          options: (f.type === 'dropdown' || f.type === 'checkbox') && Array.isArray(f.options) 
+            ? f.options.map(s => String(s).trim()).filter(Boolean) 
+            : null,
+          min_length: f.min_length || null,
+          max_length: f.max_length || null
+        };
+        return cleanField;
       });
-      const res = await fetch(`${apiBase}/api/forms`, {
-        method: 'POST',
+      const url = isEditing ? `${apiBase}/api/forms/${id}` : `${apiBase}/api/forms`;
+      const method = isEditing ? 'PUT' : 'POST';
+
+      const res = await fetch(url, {
+        method: method,
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`
@@ -118,22 +156,33 @@ export default function FormBuilder({ apiBase, token }) {
       });
       const data = await res.json();
       if (res.ok) {
-        navigate(`/form/${data.formId}`);
+        navigate(`/form/${isEditing ? id : data.formId}`);
       } else {
-        alert("Failed: " + JSON.stringify(data.error));
+        const errorMsg = Array.isArray(data.error) 
+          ? data.error.map(err => `${err.path.join('.')}: ${err.message}`).join('\n')
+          : (data.error || 'Unknown error');
+        alert("Validation Failed:\n" + errorMsg);
       }
     } catch (e) {
-      alert("Error saving form");
+      console.error("CRITICAL SAVE ERROR:", e);
+      alert(`Save Failed: ${e.message}\nCheck the browser console (F12) for details.`);
     } finally {
       setSaving(false);
     }
   };
 
+  if (loading) return <div className="flex-center" style={{height: '300px'}}><span className="loader" style={{borderColor: 'var(--accent)', borderTopColor: 'transparent'}}></span></div>;
+
   return (
     <div className="form-builder">
+      <div style={{ gridColumn: '1 / -1', marginBottom: '1rem', display: 'flex', gap: '1rem' }}>
+        <button className="secondary" onClick={() => window.location.href = '/'} style={{ padding: '0.5rem 1rem' }}>
+          <ArrowLeft size={16} style={{ marginRight: '0.5rem' }} /> Back to Dashboard
+        </button>
+      </div>
       <div>
         <div className="panel" style={{ marginBottom: '2rem' }}>
-          <h2 style={{ marginTop: 0 }}>General Settings</h2>
+          <h2 style={{ marginTop: 0 }}>{isEditing ? 'Edit Form' : 'General Settings'}</h2>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
             <div className="form-group">
               <label>Form Title</label>
@@ -239,7 +288,7 @@ export default function FormBuilder({ apiBase, token }) {
 
         <div style={{ marginTop: '2rem' }}>
           <button onClick={handleSave} disabled={saving} style={{ width: '100%', fontSize: '1.125rem' }}>
-            {saving ? 'Saving...' : <><Save size={18} style={{ marginRight: '0.5rem' }} /> Save Form & Get Code</>}
+            {saving ? 'Saving...' : <><Save size={18} style={{ marginRight: '0.5rem' }} /> {isEditing ? 'Update Form' : 'Save Form & Get Code'}</>}
           </button>
         </div>
       </div>

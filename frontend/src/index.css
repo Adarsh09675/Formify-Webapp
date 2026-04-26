@@ -150,15 +150,16 @@ button.danger:hover {
 
 /* Layout Utilities */
 .container {
-  width: 92%;
-  max-width: 1536px;
+  width: 94%;
+  max-width: 1400px;
   margin: 0 auto;
-  padding: 2rem 0;
+  padding: 1.5rem 0;
+  overflow-x: hidden; /* Prevent horizontal scroll on container level */
 }
 
 @media (min-width: 1600px) {
   html {
-    font-size: 110%; /* Scales everything up slightly on huge screens */
+    font-size: 105%; 
   }
 }
 

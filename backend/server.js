@@ -81,9 +81,9 @@ const fieldSchema = z.object({
   type: z.enum(['text', 'dropdown', 'checkbox', 'rating', 'nps']),
   label: z.string().min(1),
   is_required: z.boolean().default(false),
-  options: z.array(z.string()).optional(),
-  min_length: z.number().optional(),
-  max_length: z.number().optional()
+  options: z.array(z.string()).optional().nullable(),
+  min_length: z.number().optional().nullable(),
+  max_length: z.number().optional().nullable()
 });
 
 const formSettingsSchema = z.object({
@@ -91,22 +91,25 @@ const formSettingsSchema = z.object({
   theme_color: z.string(),
   widget_position: z.string(),
   webhook_url: z.string().url().optional().or(z.literal('')),
-  font_family: z.string().optional().default('Outfit'),
-  font_size: z.string().optional().default('medium'),
-  submit_label: z.string().optional().default('Submit'),
+  font_family: z.string().optional().nullable().default('Outfit'),
+  font_size: z.string().optional().nullable().default('medium'),
+  submit_label: z.string().optional().nullable().default('Submit'),
   fields: z.array(fieldSchema).min(1)
 });
 
-// Get all forms for user
+// Get all forms for user with submission counts
 app.get('/api/forms', authMiddleware, async (req, res) => {
   try {
-    const forms = await db.allAsync('SELECT * FROM forms WHERE user_id = ? ORDER BY created_at DESC', [req.user.id]);
-    // Fetch stats for each form (submission count, average rating/nps)
-    const result = await Promise.all(forms.map(async f => {
-      const stats = await db.getAsync('SELECT count(*) as count FROM submissions WHERE form_id = ?', [f.id]);
-      return { ...f, submissions_count: stats.count };
-    }));
-    res.json(result);
+    const forms = await db.allAsync(`
+      SELECT f.*, COUNT(s.id) as submissions_count 
+      FROM forms f 
+      LEFT JOIN submissions s ON f.id = s.form_id 
+      WHERE f.user_id = ? 
+      GROUP BY f.id 
+      ORDER BY f.created_at DESC
+    `, [req.user.id]);
+    
+    res.json(forms);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -145,7 +148,10 @@ app.post('/api/forms', authMiddleware, async (req, res) => {
     
     res.json({ success: true, formId });
   } catch (err) {
-    if (err instanceof z.ZodError) return res.status(400).json({ error: err.errors });
+    if (err instanceof z.ZodError) {
+      console.log('POST Validation Error:', JSON.stringify(err.errors, null, 2));
+      return res.status(400).json({ error: err.errors });
+    }
     res.status(500).json({ error: err.message });
   }
 });
@@ -208,11 +214,60 @@ app.get('/api/forms/:id/export', authMiddleware, async (req, res) => {
   }
 });
 
+// Update Form
+app.put('/api/forms/:id', authMiddleware, async (req, res) => {
+  try {
+    const data = formSettingsSchema.parse(req.body);
+    const formId = Number(req.params.id);
+    if (isNaN(formId)) return res.status(400).json({ error: 'Invalid Form ID' });
+
+    // Check ownership
+    const existing = await db.getAsync('SELECT id FROM forms WHERE id = ? AND user_id = ?', [formId, req.user.id]);
+    if (!existing) return res.status(404).json({ error: 'Form not found or access denied' });
+
+    // Update Form settings
+    await db.runAsync(
+      'UPDATE forms SET title = ?, theme_color = ?, widget_position = ?, webhook_url = ?, font_family = ?, font_size = ?, submit_label = ? WHERE id = ?',
+      [data.title, data.theme_color, data.widget_position, data.webhook_url || null, data.font_family, data.font_size, data.submit_label, formId]
+    );
+
+    // Update Fields: Delete old fields and insert new ones
+    // (Simpler than trying to match existing field IDs for this small app)
+    await db.runAsync('DELETE FROM form_fields WHERE form_id = ?', [formId]);
+
+    for (let i = 0; i < data.fields.length; i++) {
+      const field = data.fields[i];
+      await db.runAsync(
+        'INSERT INTO form_fields (form_id, type, label, is_required, options, order_index, min_length, max_length) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+        [
+          formId,
+          field.type,
+          field.label,
+          field.is_required ? 1 : 0,
+          field.options ? JSON.stringify(field.options) : null,
+          i,
+          field.min_length || null,
+          field.max_length || null
+        ]
+      );
+    }
+
+    res.json({ success: true, message: 'Form updated successfully' });
+  } catch (err) {
+    console.error('SERVER ERROR DURING PUT:', err);
+    if (err instanceof z.ZodError) {
+      console.log('PUT Validation Error:', JSON.stringify(err.errors, null, 2));
+      return res.status(400).json({ error: err.errors });
+    }
+    res.status(500).json({ error: err.message || 'Internal Server Error' });
+  }
+});
+
 // Delete Form
 app.delete('/api/forms/:id', authMiddleware, async (req, res) => {
   try {
-    const form = await db.getAsync('SELECT * FROM forms WHERE id = ? AND user_id = ?', [req.params.id, req.user.id]);
-    if (!form) return res.status(404).json({ error: 'Not found or forbidden' });
+    const formId = Number(req.params.id);
+    if (isNaN(formId)) return res.status(400).json({ error: 'Invalid Form ID' });
 
     // SQLite foreign keys are ON, so deleting the form cascaded deletes fields & submissions
     await db.runAsync('DELETE FROM forms WHERE id = ?', [form.id]);

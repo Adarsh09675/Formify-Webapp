@@ -103,6 +103,7 @@ function App() {
         <Routes>
           <Route path="/" element={<Dashboard apiBase={API_BASE} token={token} />} />
           <Route path="/build" element={<FormBuilder apiBase={API_BASE} token={token} />} />
+          <Route path="/edit/:id" element={<FormBuilder apiBase={API_BASE} token={token} />} />
           <Route path="/form/:id" element={<FormDetails apiBase={API_BASE} token={token} />} />
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>
